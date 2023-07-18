@@ -1,0 +1,13 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+Resources:
+  CellSegmentationLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: cellsegmentation_layer
+      CompatibleRuntimes:
+        - python3.7
+    Metadata:
+      BuildMethod: makefile
+      # TODO: v2 implementation, x86 or ARM option for deployment
+      #BuildArchitecture: arm64

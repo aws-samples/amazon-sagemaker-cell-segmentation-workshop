@@ -1,0 +1,91 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+
+Description: "Cell Segmentation Workshop tutorial using SAM"
+
+Parameters:
+  S3Bucket:
+    Description: Source S3 Bucket
+    Type: String
+    Default: "*"
+  SageMakerEndpoint:
+    Description: SageMaker endpoint
+    Type: String
+    Default: "*"
+
+Resources:
+  CellSegmentationLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: [ CellSegmentation ]
+    Properties:
+      LogGroupName: "/aws/lambda/cellsegmentation_lambda"
+      RetentionInDays: 7
+
+  CellSegmentation:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: cellsegmentation_lambda
+      CodeUri: cellsegmentation_function
+      Handler: app.lambda_handler
+      Timeout: 180
+      Runtime: python3.7
+      Environment:
+        Variables:
+          ENDPOINT_NAME: 
+            Ref: SageMakerEndpoint
+          REGION_NAME: 
+            Ref: "AWS::Region"
+      Layers: 
+        - !Ref CellSegmentationLayer
+      Policies:
+      - Statement:
+        - Sid: CellSegWorkshopS3ReadWritePerms
+          Effect: Allow
+          Action:
+          - s3:GetObject
+          - s3:PutObject
+          Resource:
+            'Fn::Join':
+                  - ''
+                  - - 'arn:aws:s3:::'
+                    - Ref: S3Bucket
+                    - '/*'
+      - Statement:
+        - Sid: CellSegWorkshopSageMakerInvokeEndpoint
+          Effect: Allow
+          Action:
+          - sagemaker:InvokeEndpoint
+          Resource:
+            'Fn::Join':
+                  - ''
+                  - - 'arn:aws:sagemaker:'
+                    - Ref: "AWS::Region"                 
+                    - ':'
+                    - Ref: "AWS::AccountId"
+                    - ':'
+                    - 'endpoint/'
+                    - Ref: SageMakerEndpoint
+  CellSegmentationLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: cellsegmentation_layer
+      CompatibleRuntimes:
+        - python3.7
+    Metadata:
+      BuildMethod: makefile
+      #BuildArchitecture: arm64
+
+Outputs:
+
+  CellSegmentationArn:
+    Description: "Cell Segmentation Lambda Function ARN"
+    Value: !GetAtt CellSegmentation.Arn
+
+  CellSegmentationIAM:
+    Description: "Implicit IAM Role created for CellSegmentation function"
+    Value: !GetAtt CellSegmentationRole.Arn   
+
+
